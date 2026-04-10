@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloom & Charm — Bespoke Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  :root {
+    --green: #1C3829;
+    --green-mid: #2D4F3C;
+    --green-light: #3D6B52;
+    --cream: #F7F2EA;
+    --cream-dark: #EDE6D8;
+    --gold: #C4975A;
+    --gold-light: #D4AD76;
+    --text: #1C3829;
+    --text-muted: #6B7F74;
+    --white: #FFFFFF;
+    --error: #B85C38;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    background-color: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--green);
+    padding: 28px 24px 22px;
+    text-align: center;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+    margin: 14px auto 0;
+  }
+  .brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 400;
+    color: var(--cream);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .brand-tagline {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--gold-light);
+    text-transform: uppercase;
+    margin-top: 5px;
+  }
+
+  /* ── Progress ── */
+  .progress-bar {
+    background: var(--green-mid);
+    padding: 0 24px;
+    display: flex;
+    justify-content: center;
+    gap: 0;
+  }
+  .step-tab {
+    padding: 13px 20px 11px;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(247,242,234,0.4);
+    border-bottom: 2px solid transparent;
+    cursor: default;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+  .step-tab.active {
+    color: var(--cream);
+    border-bottom-color: var(--gold);
+  }
+  .step-tab.done {
+    color: var(--gold-light);
+    border-bottom-color: var(--gold-light);
+  }
+
+  /* ── Main ── */
+  main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 16px 60px;
+  }
+  .form-card {
+    width: 100%;
+    max-width: 540px;
+  }
+  .step { display: none; }
+  .step.visible { display: block; animation: fadeIn 0.35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .step-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 30px;
+    font-weight: 400;
+    color: var(--green);
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .step-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* ── Budget Grid ── */
+  .budget-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .budget-tile {
+    border: 1.5px solid var(--cream-dark);
+    background: var(--white);
+    border-radius: 4px;
+    padding: 18px 12px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .budget-tile:hover {
+    border-color: var(--green-light);
+    background: #F0F7F3;
+  }
+  .budget-tile.selected {
+    border-color: var(--green);
+    background: var(--green);
+    color: var(--cream);
+  }
+  .budget-tile .amount {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 500;
+    display: block;
+  }
+  .budget-tile .label {
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.65;
+    margin-top: 3px;
+    display: block;
+  }
+
+  .custom-budget-wrap {
+    display: none;
+    margin-bottom: 20px;
+  }
+  .custom-budget-wrap.visible { display: block; animation: fadeIn 0.2s ease; }
+
+  /* ── Field Groups ── */
+  .field {
+    margin-bottom: 20px;
+  }
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .field input,
+  .field textarea,
+  .field select {
+    width: 100%;
+    background: var(--white);
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 4px;
+    padding: 13px 16px;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--text);
+    transition: border-color 0.2s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .field input:focus,
+  .field textarea:focus,
+  .field select:focus {
+    border-color: var(--green);
+  }
+  .field textarea { resize: none; line-height: 1.6; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Style Chips ── */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .chip {
+    border: 1.5px solid var(--cream-dark);
+    background: var(--white);
+    border-radius: 100px;
+    padding: 7px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--green-light); }
+  .chip.selected { background: var(--green); border-color: var(--green); color: var(--cream); }
+
+  /* ── Summary Card ── */
+  .summary {
+    background: var(--white);
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .summary-header {
+    background: var(--green);
+    color: var(--cream);
+    padding: 14px 20px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    letter-spacing: 0.05em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summary-amount {
+    font-size: 22px;
+    color: var(--gold-light);
+  }
+  .summary-body { padding: 18px 20px; }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13.5px;
+    margin-bottom: 10px;
+    gap: 16px;
+  }
+  .summary-row:last-child { margin-bottom: 0; }
+  .summary-key {
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .summary-val { text-align: right; font-weight: 400; }
+
+  .summary-divider {
+    border: none;
+    border-top: 1px solid var(--cream-dark);
+    margin: 14px 0;
+  }
+
+  /* ── Stripe Element ── */
+  #card-element {
+    background: var(--white);
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 4px;
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  #card-element.StripeElement--focus { border-color: var(--green); }
+  #card-error {
+    color: var(--error);
+    font-size: 13px;
+    margin-top: 8px;
+    min-height: 18px;
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    width: 100%;
+    background: var(--green);
+    color: var(--cream);
+    border: none;
+    border-radius: 4px;
+    padding: 16px 24px;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .btn-primary:hover { background: var(--green-light); }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 12px 0;
+    display: block;
+    margin: 12px auto 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* ── Notice ── */
+  .notice {
+    background: #F0F7F3;
+    border-left: 3px solid var(--green-light);
+    border-radius: 0 4px 4px 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .lock-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* ── Success ── */
+  .success-wrap {
+    text-align: center;
+    padding: 48px 20px;
+  }
+  .success-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+  }
+  .success-icon svg { width: 28px; height: 28px; stroke: var(--cream); }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(247,242,234,0.3);
+    border-top-color: var(--cream);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Divider ── */
+  .ornament {
+    text-align: center;
+    color: var(--gold);
+    font-size: 18px;
+    letter-spacing: 0.3em;
+    margin: 28px 0 24px;
+    opacity: 0.6;
+  }
+
+  @media (max-width: 420px) {
+    .budget-grid { grid-template-columns: repeat(2, 1fr); }
+    .field-row { grid-template-columns: 1fr; }
+    .step-tab { padding: 12px 12px 10px; font-size: 9.5px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Bloom &amp; Charm</div>
+  <div class="brand-tagline">Bespoke Floral Design · London</div>
+</header>
+
+<div class="progress-bar">
+  <div class="step-tab active" id="tab-1">Budget</div>
+  <div class="step-tab" id="tab-2">Preferences</div>
+  <div class="step-tab" id="tab-3">Delivery</div>
+  <div class="step-tab" id="tab-4">Payment</div>
+</div>
+
+<main>
+<div class="form-card">
+
+  <!-- Step 1: Budget -->
+  <div class="step visible" id="step-1">
+    <div class="step-heading">How much would you<br><em>like to spend?</em></div>
+    <div class="step-sub">Choose whatever feels right for you. Every budget creates something beautiful.</div>
+
+    <div class="budget-grid">
+      <div class="budget-tile" data-value="65" onclick="selectBudget(this)">
+        <span class="amount">£65</span>
+        <span class="label">Classic</span>
+      </div>
+      <div class="budget-tile" data-value="85" onclick="selectBudget(this)">
+        <span class="amount">£85</span>
+        <span class="label">Signature</span>
+      </div>
+      <div class="budget-tile" data-value="110" onclick="selectBudget(this)">
+        <span class="amount">£110</span>
+        <span class="label">Luxe</span>
+      </div>
+      <div class="budget-tile" data-value="150" onclick="selectBudget(this)">
+        <span class="amount">£150</span>
+        <span class="label">Grand</span>
+      </div>
+      <div class="budget-tile" data-value="200" onclick="selectBudget(this)">
+        <span class="amount">£200</span>
+        <span class="label">Statement</span>
+      </div>
+      <div class="budget-tile" data-value="custom" onclick="selectBudget(this)">
+        <span class="amount" style="font-size:20px">My own</span>
+        <span class="label">Custom</span>
+      </div>
+    </div>
+
+    <div class="custom-budget-wrap" id="custom-budget-wrap">
+      <div class="field">
+        <label>Your budget (£)</label>
+        <input type="number" id="custom-amount" placeholder="e.g. 95" min="65" max="500"
+               oninput="orderData.budget = this.value ? parseInt(this.value) : null">
+      </div>
+    </div>
+
+    <div class="notice">
+      Minimum order £65 · Delivery from £15 · Flowers are sourced fresh from New Covent Garden Market that morning.
+    </div>
+
+    <button class="btn-primary" onclick="goToStep(2)">Continue</button>
+  </div>
+
+  <!-- Step 2: Preferences -->
+  <div class="step" id="step-2">
+    <div class="step-heading">Tell me about<br><em>your flowers</em></div>
+    <div class="step-sub">I'll use this to create something truly personal for you.</div>
+
+    <div class="field">
+      <label>Occasion</label>
+      <select id="occasion" onchange="orderData.occasion = this.value">
+        <option value="">Select an occasion…</option>
+        <option>Birthday</option>
+        <option>Anniversary</option>
+        <option>Just because</option>
+        <option>Thank you</option>
+        <option>Sympathy</option>
+        <option>New home</option>
+        <option>New baby</option>
+        <option>Wedding / Event</option>
+        <option>Self treat</option>
+        <option>Other</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Preferred style</label>
+    </div>
+    <div class="chips" id="style-chips">
+      <div class="chip" onclick="toggleChip(this,'style')">Romantic &amp; Lush</div>
+      <div class="chip" onclick="toggleChip(this,'style')">Modern &amp; Sculptural</div>
+      <div class="chip" onclick="toggleChip(this,'style')">Wild &amp; Garden-Style</div>
+      <div class="chip" onclick="toggleChip(this,'style')">Soft &amp; Pastel</div>
+      <div class="chip" onclick="toggleChip(this,'style')">Bold &amp; Dramatic</div>
+      <div class="chip" onclick="toggleChip(this,'style')">Classic &amp; Elegant</div>
+      <div class="chip" onclick="toggleChip(this,'style')">Surprise me</div>
+    </div>
+
+    <div class="field">
+      <label>Flower preferences (optional)</label>
+      <input type="text" id="flower-prefs" placeholder="e.g. peonies, no lilies, anything pink…"
+             oninput="orderData.flowerPrefs = this.value">
+    </div>
+
+    <div class="field">
+      <label>Colours (optional)</label>
+    </div>
+    <div class="chips" id="colour-chips">
+      <div class="chip" onclick="toggleChip(this,'colour')">Whites &amp; Creams</div>
+      <div class="chip" onclick="toggleChip(this,'colour')">Pinks &amp; Blush</div>
+      <div class="chip" onclick="toggleChip(this,'colour')">Reds &amp; Burgundy</div>
+      <div class="chip" onclick="toggleChip(this,'colour')">Yellows &amp; Peach</div>
+      <div class="chip" onclick="toggleChip(this,'colour')">Purples &amp; Blues</div>
+      <div class="chip" onclick="toggleChip(this,'colour')">Terracotta &amp; Orange</div>
+      <div class="chip" onclick="toggleChip(this,'colour')">Open to anything</div>
+    </div>
+
+    <div class="field">
+      <label>Anything else I should know?</label>
+      <textarea id="special-wishes" rows="4"
+                placeholder="A personal message, allergies, specific stems, a colour to avoid…"
+                oninput="orderData.specialWishes = this.value"></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="goToStep(3)">Continue</button>
+    <button class="btn-back" onclick="goToStep(1)">← Back</button>
+  </div>
+
+  <!-- Step 3: Delivery -->
+  <div class="step" id="step-3">
+    <div class="step-heading">Where shall I<br><em>send them?</em></div>
+    <div class="step-sub">Next-day delivery across London. Click & Collect also available from Battersea.</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>First name</label>
+        <input type="text" id="fname" placeholder="Jane" oninput="orderData.fname = this.value">
+      </div>
+      <div class="field">
+        <label>Last name</label>
+        <input type="text" id="lname" placeholder="Smith" oninput="orderData.lname = this.value">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Phone number</label>
+      <input type="tel" id="phone" placeholder="+44 7700 900000" oninput="orderData.phone = this.value">
+    </div>
+
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="email" placeholder="jane@example.com" oninput="orderData.email = this.value">
+    </div>
+
+    <div class="field">
+      <label>Delivery type</label>
+      <select id="delivery-type" onchange="handleDeliveryType(this.value)">
+        <option value="delivery">Home / Office Delivery</option>
+        <option value="collect">Click &amp; Collect (Battersea)</option>
+      </select>
+    </div>
+
+    <div id="address-fields">
+      <div class="field">
+        <label>Delivery address</label>
+        <input type="text" id="address" placeholder="Flat 4, 12 Example Street, London"
+               oninput="orderData.address = this.value">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Postcode</label>
+          <input type="text" id="postcode" placeholder="SW8 1AA" oninput="orderData.postcode = this.value">
+        </div>
+        <div class="field">
+          <label>Delivery date</label>
+          <input type="date" id="delivery-date" oninput="orderData.deliveryDate = this.value">
+        </div>
+      </div>
+    </div>
+
+    <div id="collect-notice" style="display:none">
+      <div class="notice">
+        Collection is from Battersea Power Station area. I'll confirm the exact time and pickup address by message once your order is placed.
+      </div>
+      <div class="field">
+        <label>Preferred collection date</label>
+        <input type="date" id="collect-date" oninput="orderData.deliveryDate = this.value">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Gift message (optional)</label>
+      <textarea id="gift-message" rows="3" placeholder="Write something from the heart — I'll include it on a handwritten card."
+                oninput="orderData.giftMessage = this.value"></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="goToStep(4)">Continue to payment</button>
+    <button class="btn-back" onclick="goToStep(2)">← Back</button>
+  </div>
+
+  <!-- Step 4: Payment -->
+  <div class="step" id="step-4">
+    <div class="step-heading">Almost there —<br><em>complete your order</em></div>
+    <div class="step-sub">Review your details and pay securely below.</div>
+
+    <div class="summary">
+      <div class="summary-header">
+        <span>Your bespoke order</span>
+        <span class="summary-amount" id="summary-amount">—</span>
+      </div>
+      <div class="summary-body">
+        <div class="summary-row">
+          <span class="summary-key">Occasion</span>
+          <span class="summary-val" id="s-occasion">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">Style</span>
+          <span class="summary-val" id="s-style">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">Colours</span>
+          <span class="summary-val" id="s-colour">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">Preferences</span>
+          <span class="summary-val" id="s-prefs">—</span>
+        </div>
+        <hr class="summary-divider">
+        <div class="summary-row">
+          <span class="summary-key">Recipient</span>
+          <span class="summary-val" id="s-name">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">Delivery</span>
+          <span class="summary-val" id="s-delivery">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">Date</span>
+          <span class="summary-val" id="s-date">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Card details</label>
+      <div id="card-element"></div>
+      <div id="card-error"></div>
+    </div>
+
+    <button class="btn-primary" id="pay-btn" onclick="handlePayment()">
+      <span id="pay-label">Pay <span id="pay-amount-btn">—</span> securely</span>
+      <div class="spinner" id="pay-spinner"></div>
+    </button>
+
+    <div class="lock-note">
+      <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
+        <rect x="1" y="5" width="10" height="9" rx="2" stroke="#6B7F74" stroke-width="1.5"/>
+        <path d="M3.5 5V3.5a2.5 2.5 0 015 0V5" stroke="#6B7F74" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Secured by Stripe · Your card details are never stored
+    </div>
+
+    <button class="btn-back" onclick="goToStep(3)">← Back</button>
+  </div>
+
+  <!-- Success -->
+  <div class="step" id="step-success">
+    <div class="success-wrap">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="step-heading" style="margin-bottom:12px">Your order is placed 🌸</div>
+      <p class="step-sub" style="margin-bottom:0">
+        Thank you so much — I'll be in touch shortly to confirm your order and share all the details.<br><br>
+        <strong style="color:var(--green)">Yuliia, Bloom &amp; Charm</strong>
+      </p>
+      <div class="ornament">✦ ✦ ✦</div>
+      <p style="font-size:13px;color:var(--text-muted)">Questions? Message me on Instagram <strong>@bloomandcharm</strong></p>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const orderData = {
+  budget: null,
+  occasion: '',
+  styles: [],
+  colours: [],
+  flowerPrefs: '',
+  specialWishes: '',
+  fname: '', lname: '', phone: '', email: '',
+  address: '', postcode: '',
+  deliveryType: 'delivery',
+  deliveryDate: '',
+  giftMessage: ''
+};
+
+// ─── Stripe Setup ─────────────────────────────────────────────────────────────
+// ⚠️  REPLACE WITH YOUR PUBLISHABLE KEY from stripe.com/dashboard
+const STRIPE_KEY = 'pk_live_51SX4TWJ0aSMenkZYu4M6mf654ePQHooDghvtZbm0Pf4cJnreKdQsbqgLvpccolqD4TObdPtcLlwR8cReDHm7vuye00hH5S9fco';
+let stripe, cardElement;
+
+function initStripe() {
+  try {
+    stripe = Stripe(STRIPE_KEY);
+    const elements = stripe.elements({
+      fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Jost:wght@300;400&display=swap' }]
+    });
+    cardElement = elements.create('card', {
+      style: {
+        base: {
+          fontFamily: 'Jost, sans-serif',
+          fontSize: '15px',
+          fontWeight: '300',
+          color: '#1C3829',
+          '::placeholder': { color: '#9BB0A5' }
+        },
+        invalid: { color: '#B85C38' }
+      }
+    });
+    cardElement.mount('#card-element');
+    cardElement.on('change', e => {
+      document.getElementById('card-error').textContent = e.error ? e.error.message : '';
+    });
+  } catch(e) {
+    console.warn('Stripe init error — using test mode:', e.message);
+  }
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function goToStep(n) {
+  if (n > 1 && !validateStep(n - 1)) return;
+
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('visible'));
+  document.getElementById('step-' + n)?.classList.add('visible') ||
+  document.getElementById('step-success')?.classList.add('visible');
+
+  document.querySelectorAll('.step-tab').forEach((t, i) => {
+    t.classList.remove('active', 'done');
+    if (i + 1 < n) t.classList.add('done');
+    if (i + 1 === n) t.classList.add('active');
+  });
+
+  if (n === 4) populateSummary();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── Validation ───────────────────────────────────────────────────────────────
+function validateStep(n) {
+  if (n === 1) {
+    if (!orderData.budget || isNaN(orderData.budget) || orderData.budget < 65) {
+      alert('Please choose a budget of at least £65 to continue.'); return false;
+    }
+  }
+  if (n === 2) {
+    if (!orderData.occasion) { alert('Please choose an occasion.'); return false; }
+    if (!orderData.styles.length) { alert('Please choose at least one style.'); return false; }
+  }
+  if (n === 3) {
+    if (!orderData.fname || !orderData.lname) { alert('Please enter your full name.'); return false; }
+    if (!orderData.phone) { alert('Please enter a phone number.'); return false; }
+    if (!orderData.email || !orderData.email.includes('@')) { alert('Please enter a valid email.'); return false; }
+    if (orderData.deliveryType === 'delivery' && !orderData.address) {
+      alert('Please enter a delivery address.'); return false;
+    }
+    if (!orderData.deliveryDate) { alert('Please select a delivery/collection date.'); return false; }
+  }
+  return true;
+}
+
+// ─── Budget ───────────────────────────────────────────────────────────────────
+function selectBudget(el) {
+  document.querySelectorAll('.budget-tile').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  const val = el.dataset.value;
+  const wrap = document.getElementById('custom-budget-wrap');
+  if (val === 'custom') {
+    wrap.classList.add('visible');
+    orderData.budget = null;
+  } else {
+    wrap.classList.remove('visible');
+    orderData.budget = parseInt(val);
+  }
+}
+
+// ─── Chips ────────────────────────────────────────────────────────────────────
+function toggleChip(el, type) {
+  el.classList.toggle('selected');
+  const key = type === 'style' ? 'styles' : 'colours';
+  const text = el.textContent.trim();
+  const idx = orderData[key].indexOf(text);
+  if (idx === -1) orderData[key].push(text);
+  else orderData[key].splice(idx, 1);
+}
+
+// ─── Delivery Type ────────────────────────────────────────────────────────────
+function handleDeliveryType(val) {
+  orderData.deliveryType = val;
+  document.getElementById('address-fields').style.display = val === 'delivery' ? 'block' : 'none';
+  document.getElementById('collect-notice').style.display = val === 'collect' ? 'block' : 'none';
+}
+
+// ─── Summary ──────────────────────────────────────────────────────────────────
+function populateSummary() {
+  const fmt = v => v || '—';
+  document.getElementById('summary-amount').textContent = '£' + orderData.budget;
+  document.getElementById('pay-amount-btn').textContent = '£' + orderData.budget;
+  document.getElementById('s-occasion').textContent = fmt(orderData.occasion);
+  document.getElementById('s-style').textContent = orderData.styles.length ? orderData.styles.join(', ') : '—';
+  document.getElementById('s-colour').textContent = orderData.colours.length ? orderData.colours.join(', ') : '—';
+  document.getElementById('s-prefs').textContent = fmt(orderData.flowerPrefs || orderData.specialWishes);
+  document.getElementById('s-name').textContent = (orderData.fname + ' ' + orderData.lname).trim() || '—';
+  document.getElementById('s-delivery').textContent =
+    orderData.deliveryType === 'collect' ? 'Click & Collect · Battersea'
+    : fmt(orderData.address + (orderData.postcode ? ', ' + orderData.postcode : ''));
+  document.getElementById('s-date').textContent = orderData.deliveryDate
+    ? new Date(orderData.deliveryDate).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})
+    : '—';
+  if (!cardElement) initStripe();
+}
+
+// ─── Payment ──────────────────────────────────────────────────────────────────
+async function handlePayment() {
+  const btn = document.getElementById('pay-btn');
+  const spinner = document.getElementById('pay-spinner');
+  const label = document.getElementById('pay-label');
+  const errorEl = document.getElementById('card-error');
+
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  label.style.opacity = '0.4';
+  errorEl.textContent = '';
+
+  try {
+    // ── Create Payment Intent via your backend ──────────────────────────────
+    // You need a Netlify Function (or other backend) at this endpoint.
+    // See setup instructions at the bottom of this file.
+    const res = await fetch('/.netlify/functions/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: orderData.budget * 100, // Stripe uses pence
+        currency: 'gbp',
+        metadata: {
+          customer: orderData.fname + ' ' + orderData.lname,
+          email: orderData.email,
+          occasion: orderData.occasion,
+          styles: orderData.styles.join(', '),
+          colours: orderData.colours.join(', '),
+          flowerPrefs: orderData.flowerPrefs,
+          specialWishes: orderData.specialWishes,
+          deliveryType: orderData.deliveryType,
+          address: orderData.address,
+          postcode: orderData.postcode,
+          deliveryDate: orderData.deliveryDate,
+          giftMessage: orderData.giftMessage,
+          phone: orderData.phone
+        }
+      })
+    });
+
+    const { clientSecret, error: serverError } = await res.json();
+    if (serverError) throw new Error(serverError);
+
+    const { error } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          name: orderData.fname + ' ' + orderData.lname,
+          email: orderData.email,
+          phone: orderData.phone
+        }
+      }
+    });
+
+    if (error) {
+      errorEl.textContent = error.message;
+    } else {
+      showSuccess();
+    }
+  } catch(err) {
+    errorEl.textContent = 'Something went wrong. Please try again or contact Bloom & Charm directly.';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    label.style.opacity = '1';
+  }
+}
+
+function showSuccess() {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('visible'));
+  document.getElementById('step-success').classList.add('visible');
+  document.querySelectorAll('.step-tab').forEach(t => t.classList.add('done'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Set min date to tomorrow
+window.addEventListener('DOMContentLoaded', () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const iso = tomorrow.toISOString().split('T')[0];
+  document.getElementById('delivery-date').min = iso;
+  const cd = document.getElementById('collect-date');
+  if (cd) cd.min = iso;
+});
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════════
+  SETUP INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+  1. STRIPE PUBLISHABLE KEY
+     Replace `pk_live_YOUR_PUBLISHABLE_KEY_HERE` at the top of the
+     script with your actual key from stripe.com → Developers → API keys.
+
+  2. NETLIFY FUNCTION (backend — required for secure payments)
+     Create file: netlify/functions/create-payment-intent.js
+
+     Content:
+     ──────────────────────────────────────────────────────────────
+     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+     exports.handler = async (event) => {
+       const { amount, currency, metadata } = JSON.parse(event.body);
+       const paymentIntent = await stripe.paymentIntents.create({
+         amount, currency, metadata,
+         receipt_email: metadata.email,
+       });
+       return {
+         statusCode: 200,
+         body: JSON.stringify({ clientSecret: paymentIntent.client_secret })
+       };
+     };
+     ──────────────────────────────────────────────────────────────
+
+  3. NETLIFY ENVIRONMENT VARIABLE
+     In your Netlify dashboard → Site settings → Environment variables:
+     STRIPE_SECRET_KEY = sk_live_your_secret_key_here
+
+  4. INSTALL STRIPE IN YOUR NETLIFY PROJECT
+     In the project root: npm install stripe
+
+  That's it — Netlify handles the serverless backend, and all order
+  metadata (name, preferences, delivery, gift message) flows through
+  to your Stripe dashboard automatically.
+═══════════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
